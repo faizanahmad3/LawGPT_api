@@ -5,8 +5,8 @@ from langchain.prompts import PromptTemplate
 from langchain.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores.chroma import Chroma
-from langchain.chains import RetrievalQA
-
+from langchain.memory import ConversationBufferMemory
+from langchain.chains import ConversationalRetrievalChain
 
 def split_text(pages, chunksize, chunkoverlap):
     text_splitter = RecursiveCharacterTextSplitter(
@@ -39,18 +39,21 @@ def get_embeddings(embeddings, folder_path):
         embedding_function=embeddings
     )
 def similarity_search(vectorstore, question):
-    similar_docs = vectorstore.similarity_search(question, k=2)
-    multiple_dict_metadata = []
-    for doc in range(len(similar_docs)):
-        multiple_dict_metadata.append(similar_docs[doc].metadata)
+    similar_docs = vectorstore.similarity_search(question, k=1)
+    multiple_dict_metadata = vectorstore.get(where={'source': similar_docs[0].metadata["source"]})
+    print(multiple_dict_metadata["metadatas"])
     return multiple_dict_metadata
 
 def retrieve_data(question, template, vectorstore, metadata):
     QA_prompt = PromptTemplate(input_variables=["context", "question"], template=template)
     retriever = vectorstore.as_retriever(metadata=metadata, return_metadata = True)
-    qa = RetrievalQA.from_chain_type(llm=OpenAI(),
-                                    chain_type="stuff",
-                                    retriever=retriever,
-                                    chain_type_kwargs={"prompt": QA_prompt},
-                                    verbose=True)
+    memory = ConversationBufferMemory(memory_key="chat_history",return_messages=True)
+    qa = ConversationalRetrievalChain.from_llm(
+        llm=OpenAI(),
+        chain_type="stuff",
+        retriever=retriever,
+        memory=memory,
+        combine_docs_chain_kwargs={"prompt": QA_prompt},
+        verbose = True
+    )
     return qa.run(question)

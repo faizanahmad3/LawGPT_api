@@ -1,2 +1,5 @@
 pdfs_path: "pdfs_demo"
-embedding_path : "embedding_for_law/"
+MONGODB_ATLAS_CLUSTER_URI : "mongodb+srv://faizanahmad:aa11bb22@cluster0.skecooz.mongodb.net/"
+DB_NAME : "Law_GPT_DB"
+COLLECTION_NAME : "law_gpt_col"
+ATLAS_VECTOR_SEARCH_INDEX_NAME : "default"

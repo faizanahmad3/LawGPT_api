@@ -4,7 +4,7 @@ from langchain.llms import OpenAI
 from langchain.prompts import PromptTemplate
 from langchain.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.vectorstores.chroma import Chroma
+from langchain.vectorstores import MongoDBAtlasVectorSearch
 from langchain.memory import ConversationBufferMemory
 from langchain.chains import ConversationalRetrievalChain
 
@@ -18,7 +18,7 @@ def split_text(pages, chunksize, chunkoverlap):
     docs = text_splitter.split_documents(pages)
     return docs
 
-def create_embeddings(embeddings, pdfs_path, folder_path):
+def create_embeddings(embeddings, pdfs_path, Atlas_Vector_Search_Index_Name, Mongodb_collection):
     pdfs = os.listdir(pdfs_path)
     docs_list = []
     for i in pdfs:
@@ -26,23 +26,23 @@ def create_embeddings(embeddings, pdfs_path, folder_path):
         loader = PyPDFLoader(full_path)
         docs_list.extend(loader.load())
     docs = split_text(docs_list, 2500, 400)
-    emb_dir = folder_path
-    Chroma.from_documents(
+    MongoDBAtlasVectorSearch.from_documents(
         documents=docs,
         embedding=embeddings,
-        persist_directory=emb_dir
+        collection=Mongodb_collection,
+        index_name=Atlas_Vector_Search_Index_Name,
     )
 
-def get_embeddings(embeddings, folder_path):
-    return Chroma(
-        persist_directory=folder_path,
-        embedding_function=embeddings
-    )
-def similarity_search(vectorstore, question):
+def get_embeddings(embeddings, Mongodb_Atlas_Cluster_URI,DB_Name, Collection_Name,Atlas_Vector_Search_Index_Name):
+    return MongoDBAtlasVectorSearch.from_connection_string(
+        Mongodb_Atlas_Cluster_URI,
+        DB_Name + "." + Collection_Name,
+        embedding=embeddings,
+        index_name=Atlas_Vector_Search_Index_Name)
+def similarity_search(vectorstore, question, collection_db):
     similar_docs = vectorstore.similarity_search(question, k=1)
-    multiple_dict_metadata = vectorstore.get(where={'source': similar_docs[0].metadata["source"]})
-    print(multiple_dict_metadata["metadatas"])
-    return multiple_dict_metadata
+    multiple_dict_metadata = collection_db.find({'source': similar_docs[0].metadata['source']}, {"source": 1})
+    return [doc for doc in multiple_dict_metadata]
 
 def retrieve_data(question, template, vectorstore, metadata):
     QA_prompt = PromptTemplate(input_variables=["context", "question"], template=template)

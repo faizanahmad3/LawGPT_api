@@ -1,4 +1,4 @@
-from LawGPT_api import get_embeddings, generating_response, similarity_search_and_retriever, create_embeddings
+from utilities import get_embeddings, generating_response, similarity_search_and_retriever, create_embeddings
 import os
 import yaml
 import uuid
@@ -36,8 +36,8 @@ embeddings = get_embeddings(OpenAIEmbeddings(), config['MONGODB_ATLAS_CLUSTER_UR
 # answer = generating_response(question, template, retriever, config, str(uuid.uuid4()))
 
 app = FastAPI(description="chatbot")
-@app.post("/process_data")
-async def process_data(question):
+@app.post("/search")
+async def search(question):
     retriever = similarity_search_and_retriever(embeddings, question)
     answer = generating_response(question, template, retriever, config, str(uuid.uuid4()))
     return answer

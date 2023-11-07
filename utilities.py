@@ -73,11 +73,9 @@ def generating_response(question, template, retriever, config, session_id):
     )
     #
     chat_history = []
-    while True:
-        question = input()
-        result = qa({"question": question, "chat_history": chat_history})
-        print(result)
-        message_history.add_user_message(question)
-        message_history.add_ai_message(result['answer'])
-        chat_history.append((question, result['answer']))
+    result = qa({"question": question, "chat_history": chat_history})
+    print(result)
+    message_history.add_user_message(question)
+    message_history.add_ai_message(result['answer'])
+    chat_history.append((question, result['answer']))
     return result

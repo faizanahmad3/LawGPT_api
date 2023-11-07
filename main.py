@@ -31,15 +31,15 @@ Mongodb_collection = client[config["DB_NAME"]][config["COLLECTION_NAME"]]
 # create_embeddings(OpenAIEmbeddings(), config['pdfs_path'],config['ATLAS_VECTOR_SEARCH_INDEX_NAME'], Mongodb_collection)
 embeddings = get_embeddings(OpenAIEmbeddings(), config['MONGODB_ATLAS_CLUSTER_URI'],config["DB_NAME"] ,config['COLLECTION_NAME'],config['ATLAS_VECTOR_SEARCH_INDEX_NAME'])
 
-# question = "tell me about ramzan?"
-# retriever = similarity_search_and_retriever(embeddings, question)
-# answer = generating_response(question, template, retriever, config, str(uuid.uuid4()))
-
+session_id = None
 app = FastAPI(description="chatbot")
 @app.post("/search")
 async def search(question):
+    global session_id
+    if session_id is None:
+        session_id = str(uuid.uuid4())
     retriever = similarity_search_and_retriever(embeddings, question)
-    answer = generating_response(question, template, retriever, config, str(uuid.uuid4()))
+    answer = generating_response(question, template, retriever, config, session_id)
     return answer
 
 if __name__ == "__main__":

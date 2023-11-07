@@ -54,7 +54,6 @@ def similarity_search_and_retriever(vectorstore, question):
     return vectorstore.as_retriever(search_kwargs={'filter': {'source': similar_docs[0].metadata['source']}})
 
 def generating_response(question, template, retriever, config, session_id):
-
     message_history = MongoDBChatMessageHistory(connection_string=config['MONGODB_ATLAS_CLUSTER_URI'],
                                                 database_name=config["DB_NAME"],
                                                 collection_name=config["CHAT_HISTORY_COLLECTION"],
@@ -62,8 +61,7 @@ def generating_response(question, template, retriever, config, session_id):
 
     QA_prompt = PromptTemplate(input_variables=["question", "chat_history"], template=template)
     memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-    # question_generator = LLMChain(llm=OpenAI(), prompt=CONDENSE_QUESTION_PROMPT)
-    # doc_chain = load_qa_with_sources_chain(OpenAI(), chain_type="stuff")
+
     qa = ConversationalRetrievalChain.from_llm(
         llm=OpenAI(),
         retriever=retriever,
@@ -71,11 +69,8 @@ def generating_response(question, template, retriever, config, session_id):
         condense_question_prompt=QA_prompt,
         verbose=True,
     )
-    #
-    chat_history = []
-    result = qa({"question": question, "chat_history": chat_history})
+    result = qa({"question": question, "chat_history": message_history.messages})
     print(result)
     message_history.add_user_message(question)
     message_history.add_ai_message(result['answer'])
-    chat_history.append((question, result['answer']))
     return result

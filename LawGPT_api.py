@@ -1,12 +1,18 @@
 import os
 import openai
+from langchain.chains.qa_with_sources import load_qa_with_sources_chain
 from langchain.llms import OpenAI
 from langchain.prompts import PromptTemplate
 from langchain.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import MongoDBAtlasVectorSearch
 from langchain.memory import ConversationBufferMemory
+from langchain.memory import MongoDBChatMessageHistory
+from langchain.chains.question_answering import load_qa_chain
 from langchain.chains import ConversationalRetrievalChain
+from langchain.chains.llm import LLMChain
+from langchain.chains.conversational_retrieval.prompts import CONDENSE_QUESTION_PROMPT
+
 
 def split_text(pages, chunksize, chunkoverlap):
     text_splitter = RecursiveCharacterTextSplitter(
@@ -17,6 +23,7 @@ def split_text(pages, chunksize, chunkoverlap):
     )
     docs = text_splitter.split_documents(pages)
     return docs
+
 
 def create_embeddings(embeddings, pdfs_path, Atlas_Vector_Search_Index_Name, Mongodb_collection):
     pdfs = os.listdir(pdfs_path)
@@ -33,27 +40,44 @@ def create_embeddings(embeddings, pdfs_path, Atlas_Vector_Search_Index_Name, Mon
         index_name=Atlas_Vector_Search_Index_Name,
     )
 
-def get_embeddings(embeddings, Mongodb_Atlas_Cluster_URI,DB_Name, Collection_Name,Atlas_Vector_Search_Index_Name):
+
+def get_embeddings(embeddings, Mongodb_Atlas_Cluster_URI, DB_Name, Collection_Name, Atlas_Vector_Search_Index_Name):
     return MongoDBAtlasVectorSearch.from_connection_string(
         Mongodb_Atlas_Cluster_URI,
         DB_Name + "." + Collection_Name,
         embedding=embeddings,
         index_name=Atlas_Vector_Search_Index_Name)
-def similarity_search(vectorstore, question, collection_db):
-    similar_docs = vectorstore.similarity_search(question, k=1)
-    multiple_dict_metadata = collection_db.find({'source': similar_docs[0].metadata['source']}, {"source": 1})
-    return [doc for doc in multiple_dict_metadata]
 
-def retrieve_data(question, template, vectorstore, metadata):
-    QA_prompt = PromptTemplate(input_variables=["context", "question"], template=template)
-    retriever = vectorstore.as_retriever(metadata=metadata, return_metadata = True)
-    memory = ConversationBufferMemory(memory_key="chat_history",return_messages=True)
+
+def similarity_search_and_retriever(vectorstore, question):
+    similar_docs = vectorstore.similarity_search(question, k=1)
+    return vectorstore.as_retriever(search_kwargs={'filter': {'source': similar_docs[0].metadata['source']}})
+
+def generating_response(question, template, retriever, config, session_id):
+
+    message_history = MongoDBChatMessageHistory(connection_string=config['MONGODB_ATLAS_CLUSTER_URI'],
+                                                database_name=config["DB_NAME"],
+                                                collection_name=config["CHAT_HISTORY_COLLECTION"],
+                                                session_id=session_id)
+
+    QA_prompt = PromptTemplate(input_variables=["question", "chat_history"], template=template)
+    memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+    # question_generator = LLMChain(llm=OpenAI(), prompt=CONDENSE_QUESTION_PROMPT)
+    # doc_chain = load_qa_with_sources_chain(OpenAI(), chain_type="stuff")
     qa = ConversationalRetrievalChain.from_llm(
         llm=OpenAI(),
-        chain_type="stuff",
         retriever=retriever,
         memory=memory,
-        combine_docs_chain_kwargs={"prompt": QA_prompt},
-        verbose = True
+        condense_question_prompt=QA_prompt,
+        verbose=True,
     )
-    return qa.run(question)
+    #
+    chat_history = []
+    while True:
+        question = input()
+        result = qa({"question": question, "chat_history": chat_history})
+        print(result)
+        message_history.add_user_message(question)
+        message_history.add_ai_message(result['answer'])
+        chat_history.append((question, result['answer']))
+    return result

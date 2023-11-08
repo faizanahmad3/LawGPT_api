@@ -1,7 +1,8 @@
-from utilities import get_embeddings, generating_response, similarity_search_and_retriever, create_embeddings
+from utilities import get_embeddings, generating_response, similarity_search_and_retriever, create_embeddings, get_sessionid, get_history
 import os
 import yaml
 import uuid
+import json
 import openai
 import uvicorn
 from fastapi import FastAPI
@@ -27,11 +28,10 @@ template = """
     question: {question}
     """
 client = MongoClient(config['MONGODB_ATLAS_CLUSTER_URI'])
-Mongodb_collection = client[config["DB_NAME"]][config["COLLECTION_NAME"]]
-# create_embeddings(OpenAIEmbeddings(), config['pdfs_path'],config['ATLAS_VECTOR_SEARCH_INDEX_NAME'], Mongodb_collection)
-embeddings = get_embeddings(OpenAIEmbeddings(), config['MONGODB_ATLAS_CLUSTER_URI'],config["DB_NAME"] ,config['COLLECTION_NAME'],config['ATLAS_VECTOR_SEARCH_INDEX_NAME'])
+embeddings_collection = client[config["DB_NAME"]][config["EMBEDDINGS_COLLECTION"]]
+# create_embeddings(OpenAIEmbeddings(), config['pdfs_path'], config['ATLAS_VECTOR_SEARCH_INDEX_NAME'], embeddings_collection)
+embeddings = get_embeddings(OpenAIEmbeddings(), config['MONGODB_ATLAS_CLUSTER_URI'],config["DB_NAME"] ,config['EMBEDDINGS_COLLECTION'],config['ATLAS_VECTOR_SEARCH_INDEX_NAME'])
 
-session_id = None
 app = FastAPI(description="chatbot")
 @app.post("/search")
 async def search(question):
@@ -41,6 +41,13 @@ async def search(question):
     retriever = similarity_search_and_retriever(embeddings, question)
     answer = generating_response(question, template, retriever, config, session_id)
     return answer
+
+@app.get("/SessionId/")
+async def sessionid():
+    return get_sessionid(config)
+@app.get("/history/")
+async def history(SessionId):
+    return get_history(SessionId, config)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)

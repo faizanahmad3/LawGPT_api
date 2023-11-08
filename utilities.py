@@ -1,6 +1,6 @@
 import os
+import json
 import openai
-from langchain.chains.qa_with_sources import load_qa_with_sources_chain
 from langchain.llms import OpenAI
 from langchain.prompts import PromptTemplate
 from langchain.document_loaders import PyPDFLoader
@@ -8,11 +8,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import MongoDBAtlasVectorSearch
 from langchain.memory import ConversationBufferMemory
 from langchain.memory import MongoDBChatMessageHistory
-from langchain.chains.question_answering import load_qa_chain
 from langchain.chains import ConversationalRetrievalChain
-from langchain.chains.llm import LLMChain
-from langchain.chains.conversational_retrieval.prompts import CONDENSE_QUESTION_PROMPT
-
 
 def split_text(pages, chunksize, chunkoverlap):
     text_splitter = RecursiveCharacterTextSplitter(
@@ -57,7 +53,8 @@ def generating_response(question, template, retriever, config, session_id):
     message_history = MongoDBChatMessageHistory(connection_string=config['MONGODB_ATLAS_CLUSTER_URI'],
                                                 database_name=config["DB_NAME"],
                                                 collection_name=config["CHAT_HISTORY_COLLECTION"],
-                                                session_id=session_id)
+                                                session_id=session_id,
+                                                )
 
     QA_prompt = PromptTemplate(input_variables=["question", "chat_history"], template=template)
     memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
@@ -74,3 +71,16 @@ def generating_response(question, template, retriever, config, session_id):
     message_history.add_user_message(question)
     message_history.add_ai_message(result['answer'])
     return result
+
+def get_sessionid(config):
+    return list(set([x["SessionId"] for x in list(config["CHAT_HISTORY_COLLECTION"].find({}, {'_id': 0, 'SessionId': 1}))]))
+def get_history(SessionId, config):
+    history = [x["History"] for x in list(config["CHAT_HISTORY_COLLECTION"].find({'SessionId': SessionId}, {'_id': 0, 'History': 1}))]
+    chat_strings = []
+    for single_doc in history:
+        single_doc = json.loads(single_doc)
+        if single_doc['type'] == "human":
+            chat_strings.append({"human": str(single_doc["data"]["content"])})
+        elif single_doc['type'] == "ai":
+            chat_strings.append({"ai": str(single_doc["data"]["content"])})
+    return json.dumps(chat_strings)

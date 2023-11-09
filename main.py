@@ -29,10 +29,13 @@ template = """
     """
 client = MongoClient(config['MONGODB_ATLAS_CLUSTER_URI'])
 embeddings_collection = client[config["DB_NAME"]][config["EMBEDDINGS_COLLECTION"]]
+chat_history_collection = client[config["DB_NAME"]][config["CHAT_HISTORY_COLLECTION"]]
+
 # create_embeddings(OpenAIEmbeddings(), config['pdfs_path'], config['ATLAS_VECTOR_SEARCH_INDEX_NAME'], embeddings_collection)
 embeddings = get_embeddings(OpenAIEmbeddings(), config['MONGODB_ATLAS_CLUSTER_URI'],config["DB_NAME"] ,config['EMBEDDINGS_COLLECTION'],config['ATLAS_VECTOR_SEARCH_INDEX_NAME'])
 
 app = FastAPI(description="chatbot")
+session_id = None
 @app.post("/search")
 async def search(question):
     global session_id
@@ -44,10 +47,10 @@ async def search(question):
 
 @app.get("/SessionId/")
 async def sessionid():
-    return get_sessionid(config)
+    return get_sessionid(chat_history_collection)
 @app.get("/history/")
 async def history(SessionId):
-    return get_history(SessionId, config)
+    return get_history(SessionId, chat_history_collection)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)

@@ -1,5 +1,6 @@
 import os
 import json
+from datetime import datetime
 import openai
 from langchain.llms import OpenAI
 from langchain.prompts import PromptTemplate
@@ -9,6 +10,7 @@ from langchain.vectorstores import MongoDBAtlasVectorSearch
 from langchain.memory import ConversationBufferMemory
 from langchain.memory import MongoDBChatMessageHistory
 from langchain.chains import ConversationalRetrievalChain
+from langchain.schema.messages import AIMessage, BaseMessage, HumanMessage
 
 def split_text(pages, chunksize, chunkoverlap):
     text_splitter = RecursiveCharacterTextSplitter(
@@ -55,7 +57,8 @@ def generating_response(question, template, retriever, config, session_id):
                                                 collection_name=config["CHAT_HISTORY_COLLECTION"],
                                                 session_id=session_id,
                                                 )
-
+    a = datetime.now()
+    # message_history.collection.insert_one({"createdAt": datetime.now()})
     QA_prompt = PromptTemplate(input_variables=["question", "chat_history"], template=template)
     memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
 
@@ -68,14 +71,15 @@ def generating_response(question, template, retriever, config, session_id):
     )
     result = qa({"question": question, "chat_history": message_history.messages})
     print(result)
-    message_history.add_user_message(question)
-    message_history.add_ai_message(result['answer'])
+    message_history.add_message(message=BaseMessage(type="human", content=question, date_time=str(datetime.now())))
+    message_history.add_message(message=BaseMessage(type="ai", content=result["answer"], date_time=str(datetime.now())))
     return result
 
-def get_sessionid(config):
-    return list(set([x["SessionId"] for x in list(config["CHAT_HISTORY_COLLECTION"].find({}, {'_id': 0, 'SessionId': 1}))]))
-def get_history(SessionId, config):
-    history = [x["History"] for x in list(config["CHAT_HISTORY_COLLECTION"].find({'SessionId': SessionId}, {'_id': 0, 'History': 1}))]
+def get_sessionid(collection):
+    return json.dumps(collection.distinct('SessionId'))
+
+def get_history(SessionId, collection):
+    history = [x["History"] for x in list(collection.find({'SessionId': SessionId}, {'_id': 0, 'History': 1}))]
     chat_strings = []
     for single_doc in history:
         single_doc = json.loads(single_doc)

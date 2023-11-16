@@ -114,7 +114,7 @@ async def signin(user: Signin_User):
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
     # Exclude paths that don't require authentication
-    not_required_paths = ["/signin", "/docs", "/openapi.json", "/SessionId", "/history"]
+    not_required_paths = ["/signin", "/docs", "/openapi.json", "/SessionId", "/history", "signup"]
     if request.url.path not in not_required_paths:  # Add any other paths that don't require authentication
         # Get the authorization header
         authorization: str = request.headers.get("Authorization")

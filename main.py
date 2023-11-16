@@ -4,7 +4,8 @@ import yaml
 import uuid
 from bson import ObjectId
 from jose import JWTError, jwt
-from pydantic import BaseModel, EmailStr, constr
+from pydantic import BaseModel, EmailStr, constr, validator
+import re
 import json
 import openai
 import uvicorn
@@ -50,10 +51,10 @@ async def search(question):
     answer = generating_response(question, template, retriever, config, session_id)
     return answer
 
-@app.get("/SessionId/")
+@app.get("/SessionId")
 async def sessionid():
     return get_sessionid(chat_history_collection)
-@app.get("/history/")
+@app.get("/history")
 async def history(SessionId):
     return get_history(SessionId, chat_history_collection)
 
@@ -62,6 +63,17 @@ class Signup_User(BaseModel):
     name: constr(min_length=1, max_length=50)
     email: EmailStr
     password: constr(min_length=6, max_length=50)
+    @validator('password')
+    def password_complexity(cls, value):
+        # if not re.search("[!@#$%^&*(),.?\":{}|<>]", value):
+        #     raise ValueError('Password must contain at least one special character')
+        # if not re.search("[a-z]", value):
+        #     raise ValueError('Password must contain at least one lowercase letter')
+        # if not re.search("[A-Z]", value):
+        #     raise ValueError('Password must contain at least one uppercase letter')
+        if not re.search("[0-9]", value):
+            raise ValueError('Password must contain at least one digit')
+        return value
 
 class Signin_User(BaseModel):
     email: EmailStr
@@ -87,8 +99,7 @@ async def signup(user: Signup_User):
             "password": user.password
         }
         signup_collection.insert_one(new_user)
-
-    return create_access_token(data={"email": new_user["email"], "id": str(new_user["_id"])})
+        return create_access_token(data={"email": new_user["email"], "id": str(new_user["_id"])})
 
 @app.post("/signin")
 async def signin(user: Signin_User):
@@ -104,7 +115,7 @@ async def signin(user: Signin_User):
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
     # Exclude paths that don't require authentication
-    not_required_paths = ["/signin", "/docs", "/openapi.json"]
+    not_required_paths = ["/signin", "/docs", "/openapi.json", "/SessionId", "/history"]
     if request.url.path not in not_required_paths:  # Add any other paths that don't require authentication
         # Get the authorization header
         authorization: str = request.headers.get("Authorization")

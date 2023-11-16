@@ -6,7 +6,6 @@ from bson import ObjectId
 from jose import JWTError, jwt
 from pydantic import BaseModel, EmailStr, constr, validator
 import re
-import json
 import openai
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request

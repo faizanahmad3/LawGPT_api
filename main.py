@@ -47,15 +47,15 @@ async def search(question):
     if session_id is None:
         session_id = str(uuid.uuid4())
     retriever = similarity_search_and_retriever(embeddings, question)
-    answer = await generating_response(question, template, retriever, config, session_id)
+    answer = generating_response(question, template, retriever, config, session_id)
     return answer
 
 @app.get("/SessionId")
 async def sessionid():
-    return await get_sessionid(chat_history_collection)
+    return get_sessionid(chat_history_collection)
 @app.get("/history")
 async def history(SessionId):
-    return await get_history(SessionId, chat_history_collection)
+    return get_history(SessionId, chat_history_collection)
 
 # Define a Pydantic model for the user data
 class Signup_User(BaseModel):
@@ -86,7 +86,7 @@ def create_access_token(data: dict):
 # Create a route for user registration
 @app.post("/signup")
 async def signup(user: Signup_User):
-    existing_user = await signup_collection.find_one({"email": user.email})
+    existing_user = signup_collection.find_one({"email": user.email})
     if existing_user:
         raise HTTPException(status_code=400, detail="User with this email already exists")
 
@@ -102,7 +102,7 @@ async def signup(user: Signup_User):
 
 @app.post("/signin")
 async def signin(user: Signin_User):
-    existing_user = await signup_collection.find_one({"email": user.email})
+    existing_user = signup_collection.find_one({"email": user.email})
     print(existing_user)
     if existing_user is None:
         raise HTTPException(

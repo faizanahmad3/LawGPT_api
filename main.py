@@ -39,7 +39,7 @@ signup_collection = client[config["DB_NAME"]][config["SIGNUP_COLLECTION"]]
 embeddings = get_embeddings(OpenAIEmbeddings(), config['MONGODB_ATLAS_CLUSTER_URI'],config["DB_NAME"] ,config['EMBEDDINGS_COLLECTION'],config['ATLAS_VECTOR_SEARCH_INDEX_NAME'])
 
 ALGORITHM = "HS256"
-app = FastAPI(description="chatbot")
+app = FastAPI(title="Law_GPT API" ,description="ChatBot")
 session_id = None
 @app.post("/search")
 async def search(question):
@@ -47,15 +47,15 @@ async def search(question):
     if session_id is None:
         session_id = str(uuid.uuid4())
     retriever = similarity_search_and_retriever(embeddings, question)
-    answer = generating_response(question, template, retriever, config, session_id)
+    answer = await generating_response(question, template, retriever, config, session_id)
     return answer
 
 @app.get("/SessionId")
 async def sessionid():
-    return get_sessionid(chat_history_collection)
+    return await get_sessionid(chat_history_collection)
 @app.get("/history")
 async def history(SessionId):
-    return get_history(SessionId, chat_history_collection)
+    return await get_history(SessionId, chat_history_collection)
 
 # Define a Pydantic model for the user data
 class Signup_User(BaseModel):
@@ -86,7 +86,7 @@ def create_access_token(data: dict):
 # Create a route for user registration
 @app.post("/signup")
 async def signup(user: Signup_User):
-    existing_user = signup_collection.find_one({"email": user.email})
+    existing_user = await signup_collection.find_one({"email": user.email})
     if existing_user:
         raise HTTPException(status_code=400, detail="User with this email already exists")
 
@@ -102,7 +102,7 @@ async def signup(user: Signup_User):
 
 @app.post("/signin")
 async def signin(user: Signin_User):
-    existing_user = signup_collection.find_one({"email": user.email})
+    existing_user = await signup_collection.find_one({"email": user.email})
     print(existing_user)
     if existing_user is None:
         raise HTTPException(
@@ -114,7 +114,7 @@ async def signin(user: Signin_User):
 @app.middleware("http")
 async def auth_middleware(request: Request, call_next):
     # Exclude paths that don't require authentication
-    not_required_paths = ["/signin", "/docs", "/openapi.json", "/SessionId", "/history", "/signup"]
+    not_required_paths = ["/signin", "/docs", "/openapi.json", "/SessionId", "/history", "/signup", "/search"]
     if request.url.path not in not_required_paths:  # Add any other paths that don't require authentication
         # Get the authorization header
         authorization: str = request.headers.get("Authorization")

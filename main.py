@@ -1,4 +1,4 @@
-from utilities import get_embeddings, generating_response, similarity_search_and_retriever, create_embeddings, get_sessionid, get_history
+from utilities import get_embeddings, generating_response, similarity_search, QA_retriever, create_embeddings, get_sessionid, get_history
 import os
 import yaml
 import uuid
@@ -41,12 +41,15 @@ embeddings = get_embeddings(OpenAIEmbeddings(), config['MONGODB_ATLAS_CLUSTER_UR
 ALGORITHM = "HS256"
 app = FastAPI(title="Law_GPT API" ,description="ChatBot")
 session_id = None
+retriever = None
+similarity = None
 @app.post("/search")
 async def search(question):
-    global session_id
+    global session_id, retriever, similarity
     if session_id is None:
         session_id = str(uuid.uuid4())
-    retriever = similarity_search_and_retriever(embeddings, question)
+        similarity = similarity_search(embeddings, question)
+    retriever = QA_retriever(embeddings, similarity)
     answer = generating_response(question, template, retriever, config, session_id)
     return answer
 

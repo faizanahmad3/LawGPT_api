@@ -12,6 +12,7 @@ from langchain.memory import MongoDBChatMessageHistory
 from langchain.chains import ConversationalRetrievalChain
 from langchain.schema.messages import AIMessage, BaseMessage, HumanMessage
 
+
 def split_text(pages, chunksize, chunkoverlap):
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunksize,
@@ -47,9 +48,12 @@ def get_embeddings(embeddings, Mongodb_Atlas_Cluster_URI, DB_Name, Collection_Na
         index_name=Atlas_Vector_Search_Index_Name)
 
 
-def similarity_search_and_retriever(vectorstore, question):
+def similarity_search(vectorstore, question):
     similar_docs = vectorstore.similarity_search(question, k=1)
-    return vectorstore.as_retriever(search_kwargs={'filter': {'source': similar_docs[0].metadata['source']}})
+    return similar_docs
+
+def QA_retriever(vectorstore, similar_docs):
+    return vectorstore.as_retriever(search_type="similarity", search_kwargs={'filter': {'source': similar_docs[0].metadata['source']}})
 
 def generating_response(question, template, retriever, config, session_id):
     message_history = MongoDBChatMessageHistory(connection_string=config['MONGODB_ATLAS_CLUSTER_URI'],
@@ -68,13 +72,14 @@ def generating_response(question, template, retriever, config, session_id):
         verbose=True,
     )
     result = qa({"question": question, "chat_history": message_history.messages})
-    print(result)
     message_history.add_message(message=BaseMessage(type="human", content=question, date_time=str(datetime.now())))
     message_history.add_message(message=BaseMessage(type="ai", content=result["answer"], date_time=str(datetime.now())))
     return result
 
+
 def get_sessionid(collection):
     return json.dumps(collection.distinct('SessionId'))
+
 
 def get_history(SessionId, collection):
     history = [x["History"] for x in list(collection.find({'SessionId': SessionId}, {'_id': 0, 'History': 1}))]

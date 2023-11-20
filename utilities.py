@@ -57,8 +57,6 @@ def generating_response(question, template, retriever, config, session_id):
                                                 collection_name=config["CHAT_HISTORY_COLLECTION"],
                                                 session_id=session_id,
                                                 )
-    a = datetime.now()
-    # message_history.collection.insert_one({"createdAt": datetime.now()})
     QA_prompt = PromptTemplate(input_variables=["question", "chat_history"], template=template)
     memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
 

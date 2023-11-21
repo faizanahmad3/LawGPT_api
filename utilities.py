@@ -26,18 +26,16 @@ def split_text(pages, chunksize, chunkoverlap):
 
 def create_embeddings(embeddings, pdfs_path, Atlas_Vector_Search_Index_Name, Mongodb_collection):
     pdfs = os.listdir(pdfs_path)
-    docs_list = []
     for i in pdfs:
         full_path = os.path.join(pdfs_path, i)
         loader = PyPDFLoader(full_path)
-        docs_list.extend(loader.load())
-    docs = split_text(docs_list, 2500, 400)
-    MongoDBAtlasVectorSearch.from_documents(
-        documents=docs,
-        embedding=embeddings,
-        collection=Mongodb_collection,
-        index_name=Atlas_Vector_Search_Index_Name,
-    )
+        docs = split_text(list(loader.load()), 2500, 400)
+        MongoDBAtlasVectorSearch.from_documents(
+            documents=docs,
+            embedding=embeddings,
+            collection=Mongodb_collection,
+            index_name=Atlas_Vector_Search_Index_Name,
+        )
 
 
 def get_embeddings(embeddings, Mongodb_Atlas_Cluster_URI, DB_Name, Collection_Name, Atlas_Vector_Search_Index_Name):

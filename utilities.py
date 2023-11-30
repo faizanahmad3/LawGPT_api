@@ -86,7 +86,7 @@ def get_userid(token, ALGORITHM):
 
 def get_sessionid(user_id, collection):
     pipeline = [
-        {"$match": {"UserId": user_id}},
+        {"$match": {"UserId": user_id.userid}},
         {"$group": {"_id": "$SessionId"}}
     ]
     return json.dumps(list(collection.aggregate(pipeline)))

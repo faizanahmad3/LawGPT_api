@@ -85,7 +85,11 @@ def get_userid(token, ALGORITHM):
 
 
 def get_sessionid(user_id, collection):
-    return json.dumps(list(collection.find({'UserId': user_id.userid}, {'_id': 0, 'SessionId': 1})))
+    pipeline = [
+        {"$match": {"UserId": user_id}},
+        {"$group": {"_id": "$SessionId"}}
+    ]
+    return json.dumps(list(collection.aggregate(pipeline)))
 
 
 def get_history(userid_sessionid, collection):

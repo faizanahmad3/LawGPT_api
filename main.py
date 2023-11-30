@@ -45,7 +45,6 @@ session_id = None
 retriever = None
 similarity = None
 
-
 @app.post("/search")
 async def search(query: for_question):
     global session_id, retriever, similarity

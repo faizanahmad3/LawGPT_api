@@ -14,6 +14,16 @@ from jose import jwt
 
 
 def split_text(pages, chunksize, chunkoverlap):
+    """
+
+    Args:
+      pages: 
+      chunksize: 
+      chunkoverlap: 
+
+    Returns:
+
+    """
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunksize,
         chunk_overlap=chunkoverlap,
@@ -25,6 +35,17 @@ def split_text(pages, chunksize, chunkoverlap):
 
 
 def create_embeddings(embeddings, pdfs_path, Atlas_Vector_Search_Index_Name, Mongodb_collection):
+    """
+
+    Args:
+      embeddings: 
+      pdfs_path: 
+      Atlas_Vector_Search_Index_Name: 
+      Mongodb_collection: 
+
+    Returns:
+
+    """
     pdfs = os.listdir(pdfs_path)
     for i in pdfs:
         full_path = os.path.join(pdfs_path, i)
@@ -39,6 +60,18 @@ def create_embeddings(embeddings, pdfs_path, Atlas_Vector_Search_Index_Name, Mon
 
 
 def get_embeddings(embeddings, Mongodb_Atlas_Cluster_URI, DB_Name, Collection_Name, Atlas_Vector_Search_Index_Name):
+    """
+
+    Args:
+      embeddings: 
+      Mongodb_Atlas_Cluster_URI: 
+      DB_Name: 
+      Collection_Name: 
+      Atlas_Vector_Search_Index_Name: 
+
+    Returns:
+
+    """
     return MongoDBAtlasVectorSearch.from_connection_string(
         Mongodb_Atlas_Cluster_URI,
         DB_Name + "." + Collection_Name,
@@ -47,16 +80,46 @@ def get_embeddings(embeddings, Mongodb_Atlas_Cluster_URI, DB_Name, Collection_Na
 
 
 def similarity_search(vectorstore, question):
+    """
+
+    Args:
+      vectorstore: 
+      question: 
+
+    Returns:
+
+    """
     similar_docs = vectorstore.similarity_search(question, k=1)
     return similar_docs
 
 
 def QA_retriever(vectorstore, similar_docs):
+    """
+
+    Args:
+      vectorstore: 
+      similar_docs: 
+
+    Returns:
+
+    """
     return vectorstore.as_retriever(search_type="similarity",
                                     search_kwargs={'filter': {'source': similar_docs[0].metadata['source']}})
 
 
 def generating_response(query, template, retriever, config, session_id):
+    """
+
+    Args:
+      query: 
+      template: 
+      retriever: 
+      config: 
+      session_id: 
+
+    Returns:
+
+    """
     message_history = MongoDBChatMessageHistory(connection_string=config['MONGODB_ATLAS_CLUSTER_URI'],
                                                 database_name=config["DB_NAME"],
                                                 collection_name=config["CHAT_HISTORY_COLLECTION"],
@@ -80,11 +143,29 @@ def generating_response(query, template, retriever, config, session_id):
 
 
 def get_userid(token, ALGORITHM):
+    """
+
+    Args:
+      token: 
+      ALGORITHM: 
+
+    Returns:
+
+    """
     decoded_data = jwt.decode(token, "secret", algorithms=ALGORITHM)  # Replace with your key and algorithm
     return decoded_data["id"]
 
 
 def get_sessionid(user_id, collection):
+    """
+
+    Args:
+      user_id: 
+      collection: 
+
+    Returns:
+
+    """
     pipeline = [
         {"$match": {"UserId": user_id.userid}},
         {"$group": {"_id": "$SessionId"}}
@@ -93,6 +174,15 @@ def get_sessionid(user_id, collection):
 
 
 def get_history(userid_sessionid, collection):
+    """
+
+    Args:
+      userid_sessionid: 
+      collection: 
+
+    Returns:
+
+    """
     history = [x["History"] for x in
                list(collection.find({'UserId': userid_sessionid.userid, 'SessionId': userid_sessionid.sessionid},
                                     {'_id': 0, 'History': 1}))]
@@ -107,6 +197,15 @@ def get_history(userid_sessionid, collection):
 
 
 def create_access_token(data: dict, ALGORITHM):
+    """
+
+    Args:
+      data: dict: 
+      ALGORITHM: 
+
+    Returns:
+
+    """
     to_encode = data.copy()
     encoded_jwt = jwt.encode(to_encode, "secret", algorithm=ALGORITHM)
     return encoded_jwt

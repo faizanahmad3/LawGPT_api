@@ -22,14 +22,6 @@ OpenAI.openai_api_key = os.getenv("OPENAI_API_KEY")
 with open("path.yml", "r") as p:
     config = yaml.safe_load(p)
 
-template = """
-    Use the following pieces of context to answer the question at the end.
-    I gave you a question, you have to understand the question, so think and then answer it.
-    If you did not find any thing which is in the context, then print there is nothing about this question
-    don't try to make up an answer.
-    and the question is down below.
-    question: {question}
-    """
 client = MongoClient(config['MONGODB_ATLAS_CLUSTER_URI'])
 embeddings_collection = client[config["DB_NAME"]][config["EMBEDDINGS_COLLECTION"]]
 chat_history_collection = client[config["DB_NAME"]][config["CHAT_HISTORY_COLLECTION"]]
@@ -39,6 +31,14 @@ signup_collection = client[config["DB_NAME"]][config["SIGNUP_COLLECTION"]]
 embeddings = get_embeddings(OpenAIEmbeddings(), config['MONGODB_ATLAS_CLUSTER_URI'], config["DB_NAME"],
                             config['EMBEDDINGS_COLLECTION'], config['ATLAS_VECTOR_SEARCH_INDEX_NAME'])
 
+template = """
+    Use the following pieces of context to answer the question at the end.
+    I gave you a question, you have to understand the question, so think and then answer it.
+    If you did not find any thing which is in the context, then print there is nothing about this question
+    don't try to make up an answer.
+    and the question is down below.
+    question: {question}
+    """
 ALGORITHM = "HS256"
 app = FastAPI(title="Law_GPT API", description="ChatBot")
 session_id = None

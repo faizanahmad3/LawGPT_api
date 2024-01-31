@@ -1,7 +1,0 @@
-pdfs_path: "pdfs_demo"
-MONGODB_ATLAS_CLUSTER_URI : "mongodb+srv://faizanahmad:aa11bb22@cluster0.skecooz.mongodb.net/"
-DB_NAME : "Law_GPT_DB"
-EMBEDDINGS_COLLECTION : "data_emb_col"
-ATLAS_VECTOR_SEARCH_INDEX_NAME : "default"
-CHAT_HISTORY_COLLECTION : "law_gpt_chat_history"
-SIGNUP_COLLECTION : "signup"
